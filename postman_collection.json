@@ -1,0 +1,210 @@
+{
+    "info": {
+      "name": "Doc Intel Backend",
+      "_postman_id": "b4b4f2bc-0000-4000-8000-000000000001",
+      "description": "Collection for testing the document intelligence backend (uploads, statements, match runs).",
+      "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+    },
+    "item": [
+      {
+        "name": "1) Upload statement (CSV/PDF)",
+        "request": {
+          "method": "POST",
+          "header": [
+            {
+              "key": "X-API-Key",
+              "value": "{{api_key}}",
+              "type": "text"
+            }
+          ],
+          "url": {
+            "raw": "{{base_url}}/v1/statements/upload",
+            "host": ["{{base_url}}"],
+            "path": ["v1", "statements", "upload"]
+          },
+          "body": {
+            "mode": "formdata",
+            "formdata": [
+              {
+                "key": "file",
+                "type": "file",
+                "src": "/absolute/path/to/your/sample.csv"
+              }
+            ]
+          }
+        },
+        "response": [],
+        "event": [
+          {
+            "listen": "test",
+            "script": {
+              "exec": [
+                "if (pm.response.code === 202) {",
+                "  var json = pm.response.json();",
+                "  if (json.uploadId) {",
+                "    pm.collectionVariables.set('uploadId', json.uploadId);",
+                "    console.log('Saved uploadId:', json.uploadId);",
+                "  }",
+                "}"
+              ],
+              "type": "text/javascript"
+            }
+          }
+        ]
+      },
+      {
+        "name": "2) Get upload status",
+        "request": {
+          "method": "GET",
+          "header": [
+            {
+              "key": "X-API-Key",
+              "value": "{{api_key}}",
+              "type": "text"
+            }
+          ],
+          "url": {
+            "raw": "{{base_url}}/v1/uploads/{{uploadId}}",
+            "host": ["{{base_url}}"],
+            "path": ["v1", "uploads", "{{uploadId}}"]
+          }
+        },
+        "response": [],
+        "event": [
+          {
+            "listen": "test",
+            "script": {
+              "exec": [
+                "if (pm.response.code === 200) {",
+                "  var json = pm.response.json();",
+                "  if (json.statementIds && json.statementIds.length > 0) {",
+                "    pm.collectionVariables.set('statementId', json.statementIds[0]);",
+                "    console.log('Saved statementId:', json.statementIds[0]);",
+                "  }",
+                "}",
+                "",
+                "// Optional helper: fail if still pending",
+                "if (pm.response.code === 200 && pm.response.json().status === 'pending') {",
+                "  console.warn('Upload still pending/parsing. Poll again later.');",
+                "}"
+              ],
+              "type": "text/javascript"
+            }
+          }
+        ]
+      },
+      {
+        "name": "3) List transactions for statement",
+        "request": {
+          "method": "GET",
+          "header": [
+            {
+              "key": "X-API-Key",
+              "value": "{{api_key}}",
+              "type": "text"
+            }
+          ],
+          "url": {
+            "raw": "{{base_url}}/v1/statements/{{statementId}}/transactions?limit=50&offset=0",
+            "host": ["{{base_url}}"],
+            "path": ["v1", "statements", "{{statementId}}", "transactions"],
+            "query": [
+              { "key": "limit", "value": "50" },
+              { "key": "offset", "value": "0" }
+            ]
+          }
+        },
+        "response": []
+      },
+      {
+        "name": "4) Create match run",
+        "request": {
+          "method": "POST",
+          "header": [
+            {
+              "key": "X-API-Key",
+              "value": "{{api_key}}",
+              "type": "text"
+            },
+            {
+              "key": "Content-Type",
+              "value": "application/json",
+              "type": "text"
+            }
+          ],
+          "url": {
+            "raw": "{{base_url}}/v1/match-runs",
+            "host": ["{{base_url}}"],
+            "path": ["v1", "match-runs"]
+          },
+          "body": {
+            "mode": "raw",
+            "raw": "{\n  \"statementIds\": [\"{{statementId}}\"],\n  \"config\": {\n    \"dateWindowDays\": 5,\n    \"amountToleranceAbsolute\": 0.01,\n    \"amountToleranceRelative\": 0.005,\n    \"batchSize\": 50,\n    \"enableTextFilter\": true\n  }\n}"
+          }
+        },
+        "response": [],
+        "event": [
+          {
+            "listen": "test",
+            "script": {
+              "exec": [
+                "if (pm.response.code === 202) {",
+                "  var json = pm.response.json();",
+                "  if (json.matchRunId) {",
+                "    pm.collectionVariables.set('matchRunId', json.matchRunId);",
+                "    console.log('Saved matchRunId:', json.matchRunId);",
+                "  }",
+                "}",
+                "",
+                "if (!pm.environment.get('CLAUDE_API_KEY') && !pm.collectionVariables.get('matchRunId')) {",
+                "  console.warn('Note: real Claude calls require CLAUDE_API_KEY set in your app env.');",
+                "}"
+              ],
+              "type": "text/javascript"
+            }
+          }
+        ]
+      },
+      {
+        "name": "5) Get match run status & results",
+        "request": {
+          "method": "GET",
+          "header": [
+            {
+              "key": "X-API-Key",
+              "value": "{{api_key}}",
+              "type": "text"
+            }
+          ],
+          "url": {
+            "raw": "{{base_url}}/v1/match-runs/{{matchRunId}}",
+            "host": ["{{base_url}}"],
+            "path": ["v1", "match-runs", "{{matchRunId}}"]
+          }
+        },
+        "response": []
+      }
+    ],
+    "variable": [
+      {
+        "key": "base_url",
+        "value": "http://localhost:4000"
+      },
+      {
+        "key": "api_key",
+        "value": "local-dev-key-123"
+      },
+      {
+        "key": "uploadId",
+        "value": ""
+      },
+      {
+        "key": "statementId",
+        "value": ""
+      },
+      {
+        "key": "matchRunId",
+        "value": ""
+      }
+    ]
+  }

@@ -1,0 +1,8 @@
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.matchRunsRouter = void 0;
+const express_1 = require("express");
+const matchRunsController_1 = require("@controllers/matchRunsController");
+exports.matchRunsRouter = (0, express_1.Router)();
+exports.matchRunsRouter.post("/", matchRunsController_1.createMatchRun);
+exports.matchRunsRouter.get("/:matchRunId", matchRunsController_1.getMatchRun);
