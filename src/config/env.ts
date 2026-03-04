@@ -12,6 +12,10 @@ const required = (value: string | undefined, name: string): string => {
 export const env = {
   nodeEnv: process.env.NODE_ENV ?? "development",
   port: Number(process.env.PORT ?? 4000),
+  corsOrigins: (process.env.CORS_ORIGINS ?? "http://localhost:5173,http://localhost:5713")
+    .split(",")
+    .map((origin) => origin.trim())
+    .filter(Boolean),
   databaseUrl: required(process.env.DATABASE_URL, "DATABASE_URL"),
   redisUrl: required(process.env.REDIS_URL, "REDIS_URL"),
   uploadsDir: process.env.UPLOADS_DIR ?? "data/uploads",

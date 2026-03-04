@@ -7,7 +7,7 @@ exports.logger = void 0;
 const pino_1 = __importDefault(require("pino"));
 const env_1 = require("@config/env");
 exports.logger = (0, pino_1.default)({
-    name: "doc-intel-backend",
+    name: "statement-intelligence-engine",
     level: env_1.env.nodeEnv === "production" ? "info" : "debug",
     transport: env_1.env.nodeEnv === "production"
         ? undefined

@@ -11,6 +11,9 @@ CREATE TABLE IF NOT EXISTS uploads (
   updated_at TIMESTAMPTZ NOT NULL
 );
 
+ALTER TABLE uploads ADD COLUMN IF NOT EXISTS file_hash TEXT;
+CREATE INDEX IF NOT EXISTS idx_uploads_file_hash ON uploads(file_hash);
+
 CREATE TABLE IF NOT EXISTS statements (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   upload_id UUID REFERENCES uploads(id),

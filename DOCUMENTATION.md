@@ -50,6 +50,8 @@ The Statement Intelligence Engine is an Express.js backend that ingests bank sta
 
 All endpoints require an `X-API-Key` header (unless no keys are configured, i.e. development mode).
 
+For browser clients, requests are allowed only from origins listed in `CORS_ORIGINS`. CORS preflight (`OPTIONS`) is handled by the app and returns `204` for allowed origins.
+
 ### Upload a Statement
 
 ```
@@ -61,10 +63,17 @@ Content-Type: multipart/form-data
 |-------|------|-------------|
 | `file` | File | PDF or CSV bank statement |
 
-**Response (202):**
+**Response (202 — new upload):**
 ```json
-{ "uploadId": "uuid", "status": "pending" }
+{ "uploadId": "uuid", "status": "pending", "duplicate": false }
 ```
+
+**Response (200 — duplicate file detected):**
+```json
+{ "uploadId": "uuid-of-existing", "status": "parsed", "duplicate": true }
+```
+
+If the uploaded file is byte-identical to a previously uploaded file (compared via SHA-256 hash), the server returns the existing upload instead of creating a duplicate. Failed uploads are excluded from dedup checks, so re-uploading after a failure is always allowed.
 
 Enqueues a background `parse-upload` job. Poll the status endpoint to track progress.
 
@@ -88,6 +97,55 @@ GET /v1/uploads/:uploadId
   "createdAt": "2025-01-15T10:30:00Z",
   "updatedAt": "2025-01-15T10:35:00Z",
   "statementIds": ["uuid-1"]
+}
+```
+
+---
+
+### Delete an Upload
+
+```
+DELETE /v1/uploads/:uploadId
+```
+
+Deletes the upload and **cascades** to all associated data: statements, transactions, and any relationships referencing those transactions. The uploaded file is also removed from disk.
+
+**Response (200):**
+```json
+{ "deleted": true }
+```
+
+**Response (404):**
+```json
+{ "error": "Upload not found" }
+```
+
+---
+
+### List All Statements
+
+```
+GET /v1/statements?limit=100&offset=0
+```
+
+**Response (200):**
+```json
+{
+  "statements": [
+    {
+      "id": "uuid",
+      "upload_id": "uuid",
+      "bank_name": "access-bank",
+      "currency": "NGN",
+      "date_range_start": "2025-01-01",
+      "date_range_end": "2025-01-31",
+      "raw_metadata": {},
+      "filename": "statement.pdf",
+      "source_type": "pdf",
+      "transaction_count": 127
+    }
+  ],
+  "pagination": { "total": 5, "limit": 100, "offset": 0 }
 }
 ```
 
@@ -153,6 +211,35 @@ All config fields are optional and fall back to the defaults shown above.
 
 ---
 
+### List All Match Runs
+
+```
+GET /v1/match-runs?limit=100&offset=0
+```
+
+**Response (200):**
+```json
+{
+  "matchRuns": [
+    {
+      "id": "uuid",
+      "statement_ids": ["uuid-1", "uuid-2"],
+      "config": {},
+      "status": "completed",
+      "error": null,
+      "claude_model": "claude-sonnet-4-6",
+      "prompt_version": "PROMPT_VERSION_1",
+      "created_at": "2025-01-15T10:30:00Z",
+      "updated_at": "2025-01-15T10:45:00Z",
+      "relationship_count": 42
+    }
+  ],
+  "pagination": { "total": 3, "limit": 100, "offset": 0 }
+}
+```
+
+---
+
 ### Get Match Run Results
 
 ```
@@ -182,6 +269,26 @@ GET /v1/match-runs/:matchRunId
     }
   ]
 }
+```
+
+---
+
+### Delete a Match Run
+
+```
+DELETE /v1/match-runs/:matchRunId
+```
+
+Deletes the match run and all associated relationships.
+
+**Response (200):**
+```json
+{ "deleted": true }
+```
+
+**Response (404):**
+```json
+{ "error": "Match run not found" }
 ```
 
 ---
@@ -244,6 +351,7 @@ run-match worker picks up job:
 | `source_type` | TEXT | `"pdf"` or `"csv"` |
 | `status` | TEXT | `pending → parsing → parsed` or `failed` |
 | `error` | TEXT | Error message if failed |
+| `file_hash` | TEXT | SHA-256 hash of file contents (for deduplication) |
 | `created_at` | TIMESTAMPTZ | |
 | `updated_at` | TIMESTAMPTZ | |
 
@@ -392,10 +500,17 @@ Results below `minConfidence` (default 0.7) are filtered out before persistence.
 | `CLAUDE_API_KEY` | Yes | — | Anthropic API key |
 | `PORT` | No | `4000` | Server port |
 | `NODE_ENV` | No | `development` | Environment |
+| `CORS_ORIGINS` | No | `http://localhost:5173,http://localhost:5713` | Comma-separated allowlist for browser CORS origins |
 | `UPLOADS_DIR` | No | `data/uploads` | File storage directory |
 | `API_KEYS` | No | — | Comma-separated valid API keys. If unset, auth is disabled. |
 | `CLAUDE_MODEL` | No | `claude-sonnet-4-6` | Model for relationship matching |
 | `CLAUDE_PROMPT_VERSION` | No | `PROMPT_VERSION_1` | Prompt template version |
+
+Example:
+
+```env
+CORS_ORIGINS=http://localhost:5173,http://localhost:5713
+```
 
 ---
 
@@ -437,9 +552,9 @@ src/
 │   └── apiKeyAuth.ts               # X-API-Key authentication
 ├── routes/
 │   ├── uploads.ts                  # POST /v1/statements/upload
-│   ├── uploadsStatus.ts            # GET /v1/uploads/:uploadId
+│   ├── uploadsStatus.ts            # GET + DELETE /v1/uploads/:uploadId
 │   ├── statements.ts               # GET /v1/statements/:id/transactions
-│   └── matchRuns.ts                # POST + GET /v1/match-runs
+│   └── matchRuns.ts                # POST + GET + DELETE /v1/match-runs
 ├── controllers/
 │   ├── uploadsController.ts
 │   ├── statementsController.ts

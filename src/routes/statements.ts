@@ -1,7 +1,8 @@
 import { Router } from "express";
-import { listStatementTransactions } from "@controllers/statementsController";
+import { listStatements, listStatementTransactions } from "@controllers/statementsController";
 
 export const statementsRouter = Router();
 
+statementsRouter.get("/", listStatements);
 statementsRouter.get("/:statementId/transactions", listStatementTransactions);
 

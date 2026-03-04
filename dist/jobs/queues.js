@@ -7,7 +7,9 @@ exports.runMatchQueue = exports.parseUploadQueue = void 0;
 const bullmq_1 = require("bullmq");
 const ioredis_1 = __importDefault(require("ioredis"));
 const env_1 = require("@config/env");
-const connection = new ioredis_1.default(env_1.env.redisUrl);
+const connection = new ioredis_1.default(env_1.env.redisUrl, {
+    maxRetriesPerRequest: null
+});
 exports.parseUploadQueue = new bullmq_1.Queue("parse-upload", {
     connection
 });

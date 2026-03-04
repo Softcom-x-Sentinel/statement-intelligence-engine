@@ -8,6 +8,11 @@ const logger_1 = require("@utils/logger");
 exports.pool = new pg_1.Pool({
     connectionString: env_1.env.databaseUrl
 });
+exports.pool.on("connect", (client) => {
+    client.query("SET search_path TO public").catch((err) => {
+        logger_1.logger.error({ err }, "Failed to set Postgres search_path to public");
+    });
+});
 exports.pool.on("error", (err) => {
     logger_1.logger.error({ err }, "Unexpected PG pool error");
 });

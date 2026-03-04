@@ -39,11 +39,14 @@
             "listen": "test",
             "script": {
               "exec": [
-                "if (pm.response.code === 202) {",
+                "if (pm.response.code === 202 || pm.response.code === 200) {",
                 "  var json = pm.response.json();",
                 "  if (json.uploadId) {",
                 "    pm.collectionVariables.set('uploadId', json.uploadId);",
                 "    console.log('Saved uploadId:', json.uploadId);",
+                "    if (json.duplicate) {",
+                "      console.log('Duplicate file detected. Returning existing upload.');",
+                "    }",
                 "  }",
                 "}"
               ],
@@ -94,7 +97,47 @@
         ]
       },
       {
-        "name": "3) List transactions for statement",
+        "name": "3) List all statements",
+        "request": {
+          "method": "GET",
+          "header": [
+            {
+              "key": "X-API-Key",
+              "value": "{{api_key}}",
+              "type": "text"
+            }
+          ],
+          "url": {
+            "raw": "{{base_url}}/v1/statements?limit=100&offset=0",
+            "host": ["{{base_url}}"],
+            "path": ["v1", "statements"],
+            "query": [
+              { "key": "limit", "value": "100" },
+              { "key": "offset", "value": "0" }
+            ]
+          }
+        },
+        "response": [],
+        "event": [
+          {
+            "listen": "test",
+            "script": {
+              "exec": [
+                "if (pm.response.code === 200) {",
+                "  var json = pm.response.json();",
+                "  if (json.statements && json.statements.length > 0) {",
+                "    pm.collectionVariables.set('statementId', json.statements[0].id);",
+                "    console.log('Saved statementId:', json.statements[0].id);",
+                "  }",
+                "}"
+              ],
+              "type": "text/javascript"
+            }
+          }
+        ]
+      },
+      {
+        "name": "4) List transactions for statement",
         "request": {
           "method": "GET",
           "header": [
@@ -117,7 +160,7 @@
         "response": []
       },
       {
-        "name": "4) Create match run",
+        "name": "5) Create match run",
         "request": {
           "method": "POST",
           "header": [
@@ -166,9 +209,70 @@
         ]
       },
       {
-        "name": "5) Get match run status & results",
+        "name": "6) List all match runs",
         "request": {
           "method": "GET",
+          "header": [
+            {
+              "key": "X-API-Key",
+              "value": "{{api_key}}",
+              "type": "text"
+            }
+          ],
+          "url": {
+            "raw": "{{base_url}}/v1/match-runs?limit=100&offset=0",
+            "host": ["{{base_url}}"],
+            "path": ["v1", "match-runs"],
+            "query": [
+              { "key": "limit", "value": "100" },
+              { "key": "offset", "value": "0" }
+            ]
+          }
+        },
+        "response": []
+      },
+      {
+        "name": "7) Delete upload",
+        "request": {
+          "method": "DELETE",
+          "header": [
+            {
+              "key": "X-API-Key",
+              "value": "{{api_key}}",
+              "type": "text"
+            }
+          ],
+          "url": {
+            "raw": "{{base_url}}/v1/uploads/{{uploadId}}",
+            "host": ["{{base_url}}"],
+            "path": ["v1", "uploads", "{{uploadId}}"]
+          }
+        },
+        "response": []
+      },
+      {
+        "name": "8) Get match run status & results",
+        "request": {
+          "method": "GET",
+          "header": [
+            {
+              "key": "X-API-Key",
+              "value": "{{api_key}}",
+              "type": "text"
+            }
+          ],
+          "url": {
+            "raw": "{{base_url}}/v1/match-runs/{{matchRunId}}",
+            "host": ["{{base_url}}"],
+            "path": ["v1", "match-runs", "{{matchRunId}}"]
+          }
+        },
+        "response": []
+      },
+      {
+        "name": "9) Delete match run",
+        "request": {
+          "method": "DELETE",
           "header": [
             {
               "key": "X-API-Key",

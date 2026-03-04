@@ -1,6 +1,7 @@
 import express from "express";
 import { json } from "express";
 import { apiKeyAuth } from "./middleware/apiKeyAuth";
+import { env } from "@config/env";
 import { logger } from "@utils/logger";
 import { uploadsRouter } from "@routes/uploads";
 import { uploadsStatusRouter } from "@routes/uploadsStatus";
@@ -9,8 +10,27 @@ import { matchRunsRouter } from "@routes/matchRuns";
 
 export const createApp = () => {
   const app = express();
+  const allowedOrigins = new Set(env.corsOrigins);
 
   app.use(json({ limit: "10mb" }));
+
+  app.use((req, res, next) => {
+    const requestOrigin = req.headers.origin;
+
+    if (requestOrigin && allowedOrigins.has(requestOrigin)) {
+      res.header("Access-Control-Allow-Origin", requestOrigin);
+      res.header("Vary", "Origin");
+      res.header("Access-Control-Allow-Methods", "GET,POST,PUT,PATCH,DELETE,OPTIONS");
+      res.header("Access-Control-Allow-Headers", "Content-Type,X-API-Key");
+    }
+
+    if (req.method === "OPTIONS") {
+      return res.status(204).end();
+    }
+
+    return next();
+  });
+
   app.use(apiKeyAuth);
 
   // v1 routes

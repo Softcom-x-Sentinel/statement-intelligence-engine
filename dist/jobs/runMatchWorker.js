@@ -78,5 +78,5 @@ const processJob = async (job) => {
     });
 };
 exports.runMatchWorker = new bullmq_1.Worker("run-match", processJob, {
-    connection: new ioredis_1.default(env_1.env.redisUrl)
+    connection: new ioredis_1.default(env_1.env.redisUrl, { maxRetriesPerRequest: null })
 });

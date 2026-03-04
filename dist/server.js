@@ -4,6 +4,8 @@ const app_1 = require("./app");
 const env_1 = require("@config/env");
 const logger_1 = require("@utils/logger");
 const init_1 = require("@db/init");
+require("@jobs/parseUploadWorker");
+require("@jobs/runMatchWorker");
 const app = (0, app_1.createApp)();
 async function start() {
     try {
