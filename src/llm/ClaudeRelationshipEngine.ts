@@ -48,6 +48,11 @@ const extractJson = (text: string): any => {
   return JSON.parse(jsonSlice);
 };
 
+const sleep = (ms: number) => new Promise<void>((r) => setTimeout(r, ms));
+
+// Network errors that are safe to retry (transient TLS/connection blips)
+const RETRIABLE_CODES = new Set(["EPROTO", "ECONNRESET", "ECONNREFUSED", "ETIMEDOUT", "ENOTFOUND"]);
+
 export class ClaudeRelationshipEngine {
   async matchPairs(
     pairs: CandidatePair[],
@@ -71,7 +76,7 @@ export class ClaudeRelationshipEngine {
 
     const body = {
       model: config.model,
-      max_tokens: 1024,
+      max_tokens: 8192,
       temperature: 0,
       system: systemPrompt,
       messages: [
@@ -88,12 +93,12 @@ export class ClaudeRelationshipEngine {
     };
 
     const maxRetries = config.maxRetries ?? 2;
-    let attempt = 0;
-    let lastError: unknown;
 
-    while (attempt <= maxRetries) {
+    for (let attempt = 0; attempt <= maxRetries; attempt++) {
+      let res: Awaited<ReturnType<typeof fetch>>;
+
       try {
-        const res = await fetch("https://api.anthropic.com/v1/messages", {
+        res = await fetch("https://api.anthropic.com/v1/messages", {
           method: "POST",
           headers: {
             "content-type": "application/json",
@@ -102,44 +107,69 @@ export class ClaudeRelationshipEngine {
           },
           body: JSON.stringify(body)
         });
-
-        if (!res.ok) {
-          const text = await res.text();
-          throw new Error(`Claude API error: ${res.status} ${res.statusText} - ${text}`);
+      } catch (networkErr: any) {
+        if (attempt === maxRetries || !RETRIABLE_CODES.has(networkErr.code)) {
+          throw networkErr;
         }
+        const waitMs = Math.pow(2, attempt) * 2000;
+        logger.warn(
+          { attempt, waitMs, code: networkErr.code, message: networkErr.message, pairCount: pairs.length },
+          `Network error calling Claude (${networkErr.code}). Retrying in ${waitMs / 1000}s.`
+        );
+        await sleep(waitMs);
+        continue;
+      }
 
-        const json: any = await res.json();
-        const content = Array.isArray(json.content) && json.content[0]?.text
+      if (res.status === 429) {
+        if (attempt === maxRetries) {
+          const errText = await res.text();
+          throw new Error(`Claude API error: 429 Too Many Requests - ${errText}`);
+        }
+        const retryAfterSec = Number(res.headers.get("retry-after") ?? "60");
+        const waitMs = retryAfterSec * 1000;
+        logger.warn(
+          { attempt, waitMs, pairCount: pairs.length },
+          `Claude rate-limited (429). Waiting ${retryAfterSec}s before retry.`
+        );
+        await sleep(waitMs);
+        continue;
+      }
+
+      if (!res.ok) {
+        const errText = await res.text();
+        throw new Error(`Claude API error: ${res.status} ${res.statusText} - ${errText}`);
+      }
+
+      const json: any = await res.json();
+
+      if (json.stop_reason === "max_tokens") {
+        throw new Error(
+          "Claude matchPairs response was truncated at max_tokens. Reduce batch size or increase max_tokens."
+        );
+      }
+
+      const content: string =
+        Array.isArray(json.content) && json.content[0]?.text
           ? json.content[0].text
           : typeof json.content === "string"
             ? json.content
             : JSON.stringify(json);
 
-        const parsedRaw = extractJson(content);
-        const parsed = ResponseSchema.parse(parsedRaw);
+      const parsedRaw = extractJson(content);
+      const parsed = ResponseSchema.parse(parsedRaw);
 
-        return parsed.results
-          .filter((r) => r.confidence >= config.minConfidence)
-          .map((r) => ({
-            pairId: r.pairId,
-            relationshipType: r.relationshipType,
-            confidence: r.confidence,
-            reason: r.reason
-          }));
-      } catch (err) {
-        lastError = err;
-        attempt += 1;
-        logger.error(
-          { err, attempt, maxRetries, pairCount: pairs.length },
-          "Claude matchPairs call failed"
-        );
-        if (attempt > maxRetries) {
-          throw err;
-        }
-      }
+      return parsed.results
+        .filter((r) => r.confidence >= config.minConfidence)
+        .map((r) => ({
+          pairId: r.pairId,
+          relationshipType: r.relationshipType,
+          confidence: r.confidence,
+          reason: r.reason
+        }));
     }
 
-    throw lastError instanceof Error ? lastError : new Error("Unknown Claude error");
+    // Unreachable, but satisfies TypeScript
+    throw new Error("Unknown Claude error");
   }
 }
 

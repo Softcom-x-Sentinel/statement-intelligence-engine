@@ -3,6 +3,7 @@ import { env } from "@config/env";
 import { logger } from "@utils/logger";
 import { initializeDatabase } from "@db/init";
 import "@jobs/parseUploadWorker";
+import "@jobs/runMatchWorker";
 
 const app = createApp();
 

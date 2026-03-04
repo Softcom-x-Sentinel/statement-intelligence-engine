@@ -158,6 +158,12 @@ const lastParsedBalance = (rows: RawTransactionRow[]): number | null => {
 const CHUNK_LINES = 80;
 const CHUNK_OVERLAP = 8;
 
+// Free-tier API limit: 5 requests per minute across all models
+const RATE_LIMIT_RPM = 5;
+const RATE_LIMIT_WINDOW_MS = 62_000; // 62 s gives a 2 s safety margin
+
+const sleep = (ms: number) => new Promise<void>((r) => setTimeout(r, ms));
+
 const splitTextIntoChunks = (text: string): string[] => {
   const lines = text.split("\n");
   if (lines.length <= CHUNK_LINES) return [text];
@@ -183,8 +189,18 @@ const extractWithClaude = async (
   );
 
   const chunkResults = [];
-  for (const chunk of chunks) {
-    chunkResults.push(await callClaudeChunk(chunk));
+
+  for (let i = 0; i < chunks.length; i++) {
+    // Before starting each new batch of RATE_LIMIT_RPM requests, wait out
+    // the remainder of the rate-limit window so we never exceed 5 RPM.
+    if (i > 0 && i % RATE_LIMIT_RPM === 0) {
+      logger.info(
+        { chunk: i, total: chunks.length },
+        `Rate-limit pause: waiting ${RATE_LIMIT_WINDOW_MS / 1000}s before next batch.`
+      );
+      await sleep(RATE_LIMIT_WINDOW_MS);
+    }
+    chunkResults.push(await callClaudeChunk(chunks[i]));
   }
 
   const allTransactions = deduplicateLLMTransactions(chunkResults.flat());
