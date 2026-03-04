@@ -2,7 +2,7 @@ import pino from "pino";
 import { env } from "@config/env";
 
 export const logger = pino({
-  name: "doc-intel-backend",
+  name: "statement-intelligence-engine",
   level: env.nodeEnv === "production" ? "info" : "debug",
   transport: env.nodeEnv === "production"
     ? undefined

@@ -1,5 +1,5 @@
 {
-  "name": "doc-intel-backend",
+  "name": "statement-intelligence-engine",
   "version": "0.1.0",
   "private": true,
   "description": "Document intelligence backend for bank statement ingestion and relationship matching using Claude.",
