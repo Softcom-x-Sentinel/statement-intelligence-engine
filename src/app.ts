@@ -31,6 +31,11 @@ export const createApp = () => {
     return next();
   });
 
+  // Health check (no auth required — used by Render/Docker health checks)
+  app.get("/health", (_req, res) => {
+    res.status(200).json({ status: "ok" });
+  });
+
   app.use(apiKeyAuth);
 
   // v1 routes

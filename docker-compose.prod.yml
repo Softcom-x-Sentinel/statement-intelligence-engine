@@ -1,0 +1,23 @@
+version: "3.9"
+
+# Production-like override — use with:
+#   docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d
+
+services:
+  postgres:
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-sie_user}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}
+      POSTGRES_DB: ${POSTGRES_DB:-statement_intel}
+    ports: []  # Do not expose DB externally
+
+  redis:
+    command: redis-server --requirepass ${REDIS_PASSWORD:?Set REDIS_PASSWORD in .env}
+    ports: []  # Do not expose Redis externally
+
+  app:
+    restart: always
+    environment:
+      NODE_ENV: production
+      DATABASE_URL: postgres://${POSTGRES_USER:-sie_user}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-statement_intel}
+      REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379

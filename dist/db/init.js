@@ -6,8 +6,8 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.initializeDatabase = initializeDatabase;
 const fs_1 = __importDefault(require("fs"));
 const path_1 = __importDefault(require("path"));
-const pool_1 = require("@db/pool");
-const logger_1 = require("@utils/logger");
+const pool_1 = require("./pool");
+const logger_1 = require("../utils/logger");
 async function initializeDatabase() {
     const migrationPath = path_1.default.resolve(process.cwd(), "migrations/001_init.sql");
     const sql = await fs_1.default.promises.readFile(migrationPath, "utf8");

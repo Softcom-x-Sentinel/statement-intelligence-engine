@@ -1,9 +1,9 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.MatchRunsService = void 0;
-const pool_1 = require("@db/pool");
-const queues_1 = require("@jobs/queues");
-const logger_1 = require("@utils/logger");
+const pool_1 = require("../db/pool");
+const queues_1 = require("../jobs/queues");
+const logger_1 = require("../utils/logger");
 const DEFAULT_MATCH_RUN_CONFIG = {
     relationshipTypes: [],
     dateWindowDays: 5,

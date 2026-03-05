@@ -6,8 +6,8 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.parseCsvFile = parseCsvFile;
 const fs_1 = __importDefault(require("fs"));
 const csv_parse_1 = require("csv-parse");
-const logger_1 = require("@utils/logger");
-const claudeExtract_1 = require("@llm/claudeExtract");
+const logger_1 = require("../utils/logger");
+const claudeExtract_1 = require("../llm/claudeExtract");
 // ---------------------------------------------------------------------------
 // Deterministic path — maps known column names from the bank config
 // ---------------------------------------------------------------------------

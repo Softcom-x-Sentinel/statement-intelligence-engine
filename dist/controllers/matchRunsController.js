@@ -4,7 +4,7 @@ exports.listMatchRuns = listMatchRuns;
 exports.createMatchRun = createMatchRun;
 exports.getMatchRun = getMatchRun;
 exports.deleteMatchRun = deleteMatchRun;
-const matchRunsService_1 = require("@services/matchRunsService");
+const matchRunsService_1 = require("../services/matchRunsService");
 const matchRunsService = new matchRunsService_1.MatchRunsService();
 async function listMatchRuns(req, res) {
     try {

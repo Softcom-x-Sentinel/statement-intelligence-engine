@@ -1,7 +1,7 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.persistClaudeResults = exports.buildPairIndex = void 0;
-const pool_1 = require("@db/pool");
+const pool_1 = require("../db/pool");
 const buildPairIndex = (pairs) => {
     const index = new Map();
     for (const p of pairs) {

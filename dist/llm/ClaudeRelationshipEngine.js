@@ -6,8 +6,8 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.claudeRelationshipEngine = exports.ClaudeRelationshipEngine = void 0;
 const node_fetch_1 = __importDefault(require("node-fetch"));
 const zod_1 = require("zod");
-const env_1 = require("@config/env");
-const logger_1 = require("@utils/logger");
+const env_1 = require("../config/env");
+const logger_1 = require("../utils/logger");
 const relationshipPrompt_v1_1 = require("./prompts/relationshipPrompt.v1");
 const ResultSchema = zod_1.z.object({
     pairId: zod_1.z.string(),

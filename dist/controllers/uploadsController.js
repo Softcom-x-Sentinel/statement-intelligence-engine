@@ -3,7 +3,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.handleUpload = handleUpload;
 exports.getUploadStatus = getUploadStatus;
 exports.deleteUpload = deleteUpload;
-const uploadService_1 = require("@services/uploadService");
+const uploadService_1 = require("../services/uploadService");
 const uploadService = new uploadService_1.UploadService();
 async function handleUpload(req, res) {
     if (!req.file) {

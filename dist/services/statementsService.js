@@ -1,7 +1,7 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.StatementsService = void 0;
-const pool_1 = require("@db/pool");
+const pool_1 = require("../db/pool");
 class StatementsService {
     async listStatements(pagination) {
         const { limit, offset } = pagination;

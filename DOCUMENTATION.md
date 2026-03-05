@@ -538,6 +538,87 @@ npm start       # Run dist/server.js
 - Redis instance
 - Anthropic API key
 
+### Docker Compose (Recommended for local dev)
+
+Docker Compose bundles the app, PostgreSQL, and Redis into a single portable setup.
+
+```bash
+# 1. Copy and configure environment
+cp .env.example .env
+# Edit .env — set CLAUDE_API_KEY at minimum
+
+# 2. Start all services
+docker compose up --build
+```
+
+This starts:
+- **App** on `localhost:4000`
+- **PostgreSQL** (user: `sie_user`, password: `sie_password`, db: `statement_intel`)
+- **Redis** on `localhost:6379`
+
+For production-like settings (required passwords, no exposed DB/Redis ports):
+
+```bash
+docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d
+```
+
+The production override requires `POSTGRES_PASSWORD` and `REDIS_PASSWORD` to be set in `.env`.
+
+### Health Check
+
+```
+GET /health
+```
+
+Returns `{ "status": "ok" }` — no authentication required. Used by Docker and Render health checks.
+
+### Deploy to Render
+
+The project includes a `render.yaml` Blueprint for one-click deployment to [Render](https://render.com).
+
+**What Render provisions automatically:**
+- Web service (Docker-based, from the `Dockerfile`)
+- Managed PostgreSQL (`DATABASE_URL` auto-injected)
+- Persistent disk for file uploads
+
+**What you set manually in the Render dashboard (Environment tab):**
+
+| Variable | Where to get it |
+|----------|----------------|
+| `REDIS_URL` | Upstash (see below) |
+| `CLAUDE_API_KEY` | Anthropic dashboard |
+| `API_KEYS` | Your chosen API key(s) |
+| `CORS_ORIGINS` | Your frontend URL |
+
+**Deployment steps:**
+
+1. Push this repo to GitHub
+2. Go to Render → **New** → **Blueprint**
+3. Connect your repo — Render reads `render.yaml` automatically
+4. Set the secret env vars listed above in the dashboard
+5. Deploy
+
+**Redis via Upstash (free tier):**
+
+Render's managed Redis requires a paid plan. Use [Upstash](https://upstash.com) instead (free: 10k commands/day, 256MB):
+
+1. Sign up at upstash.com
+2. Create a Redis database (pick the region closest to your Render service, e.g. `us-west`)
+3. Copy the **Redis URL** (starts with `rediss://`, not the REST URL)
+4. Paste as `REDIS_URL` in the Render dashboard
+
+The `rediss://` scheme enables TLS automatically — no code changes needed.
+
+### Deployment Files
+
+| File | Purpose |
+|------|---------|
+| `Dockerfile` | Multi-stage build: compile TypeScript → slim production image (Alpine, non-root user) |
+| `.dockerignore` | Excludes node_modules, dist, .env, uploads from build context |
+| `docker-compose.yml` | Local dev: app + Postgres + Redis with health checks |
+| `docker-compose.prod.yml` | Production override: passwords required, DB/Redis ports locked down |
+| `render.yaml` | Render Blueprint: web service + managed Postgres + Upstash Redis instructions |
+
 ---
 
 ## Project Structure

@@ -7,12 +7,12 @@ exports.createApp = void 0;
 const express_1 = __importDefault(require("express"));
 const express_2 = require("express");
 const apiKeyAuth_1 = require("./middleware/apiKeyAuth");
-const env_1 = require("@config/env");
-const logger_1 = require("@utils/logger");
-const uploads_1 = require("@routes/uploads");
-const uploadsStatus_1 = require("@routes/uploadsStatus");
-const statements_1 = require("@routes/statements");
-const matchRuns_1 = require("@routes/matchRuns");
+const env_1 = require("./config/env");
+const logger_1 = require("./utils/logger");
+const uploads_1 = require("./routes/uploads");
+const uploadsStatus_1 = require("./routes/uploadsStatus");
+const statements_1 = require("./routes/statements");
+const matchRuns_1 = require("./routes/matchRuns");
 const createApp = () => {
     const app = (0, express_1.default)();
     const allowedOrigins = new Set(env_1.env.corsOrigins);
@@ -29,6 +29,10 @@ const createApp = () => {
             return res.status(204).end();
         }
         return next();
+    });
+    // Health check (no auth required — used by Render/Docker health checks)
+    app.get("/health", (_req, res) => {
+        res.status(200).json({ status: "ok" });
     });
     app.use(apiKeyAuth_1.apiKeyAuth);
     // v1 routes

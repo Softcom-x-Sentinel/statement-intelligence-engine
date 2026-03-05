@@ -1,7 +1,7 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.apiKeyAuth = apiKeyAuth;
-const env_1 = require("@config/env");
+const env_1 = require("../config/env");
 function apiKeyAuth(req, res, next) {
     if (env_1.env.apiKeys.length === 0) {
         return next();

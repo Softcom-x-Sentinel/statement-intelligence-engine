@@ -2,7 +2,7 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.listStatements = listStatements;
 exports.listStatementTransactions = listStatementTransactions;
-const statementsService_1 = require("@services/statementsService");
+const statementsService_1 = require("../services/statementsService");
 const statementsService = new statementsService_1.StatementsService();
 async function listStatements(req, res) {
     try {

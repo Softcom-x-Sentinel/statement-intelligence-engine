@@ -7,10 +7,10 @@ exports.UploadService = void 0;
 const fs_1 = __importDefault(require("fs"));
 const path_1 = __importDefault(require("path"));
 const crypto_1 = __importDefault(require("crypto"));
-const pool_1 = require("@db/pool");
-const env_1 = require("@config/env");
-const queues_1 = require("@jobs/queues");
-const logger_1 = require("@utils/logger");
+const pool_1 = require("../db/pool");
+const env_1 = require("../config/env");
+const queues_1 = require("../jobs/queues");
+const logger_1 = require("../utils/logger");
 class UploadService {
     async createUpload(input) {
         const sourceType = input.mimeType.includes("pdf") ? "pdf" : "csv";

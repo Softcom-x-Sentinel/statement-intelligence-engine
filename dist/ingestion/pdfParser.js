@@ -6,8 +6,8 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.parsePdfFile = parsePdfFile;
 const fs_1 = __importDefault(require("fs"));
 const pdf_parse_1 = __importDefault(require("pdf-parse"));
-const logger_1 = require("@utils/logger");
-const claudeExtract_1 = require("@llm/claudeExtract");
+const logger_1 = require("../utils/logger");
+const claudeExtract_1 = require("../llm/claudeExtract");
 // ---------------------------------------------------------------------------
 // Line mode — one regex match per trimmed line
 // ---------------------------------------------------------------------------
