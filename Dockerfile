@@ -23,6 +23,7 @@ COPY package.json package-lock.json* ./
 RUN npm ci --omit=dev && npm cache clean --force
 
 COPY --from=builder /app/dist ./dist
+COPY migrations/ ./migrations/
 
 # Create uploads directory
 RUN mkdir -p data/uploads && chown -R appuser:appgroup data/
