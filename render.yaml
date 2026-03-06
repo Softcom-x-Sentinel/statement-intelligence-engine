@@ -12,7 +12,7 @@ services:
     name: statement-intelligence-engine
     runtime: docker
     dockerfilePath: ./Dockerfile
-    plan: starter  # Change to "standard" for production
+    plan: free
     region: oregon
     healthCheckPath: /health
     envVars:
@@ -46,6 +46,6 @@ services:
 databases:
   # ── Managed PostgreSQL ──────────────────────────────────────
   - name: sie-postgres
-    plan: starter  # Change to "standard" for production
+    plan: free
     databaseName: statement_intel
     user: sie_user
