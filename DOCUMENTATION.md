@@ -59,16 +59,20 @@ POST /v1/statements/upload
 Content-Type: multipart/form-data
 ```
 
-| Field | Type | Description |
-|-------|------|-------------|
+
+| Field  | Type | Description               |
+| ------ | ---- | ------------------------- |
 | `file` | File | PDF or CSV bank statement |
 
+
 **Response (202 — new upload):**
+
 ```json
 { "uploadId": "uuid", "status": "pending", "duplicate": false }
 ```
 
 **Response (200 — duplicate file detected):**
+
 ```json
 { "uploadId": "uuid-of-existing", "status": "parsed", "duplicate": true }
 ```
@@ -86,6 +90,7 @@ GET /v1/uploads/:uploadId
 ```
 
 **Response (200):**
+
 ```json
 {
   "uploadId": "uuid",
@@ -111,11 +116,13 @@ DELETE /v1/uploads/:uploadId
 Deletes the upload and **cascades** to all associated data: statements, transactions, and any relationships referencing those transactions. The uploaded file is also removed from disk.
 
 **Response (200):**
+
 ```json
 { "deleted": true }
 ```
 
 **Response (404):**
+
 ```json
 { "error": "Upload not found" }
 ```
@@ -129,6 +136,7 @@ GET /v1/statements?limit=100&offset=0
 ```
 
 **Response (200):**
+
 ```json
 {
   "statements": [
@@ -158,6 +166,7 @@ GET /v1/statements/:statementId/transactions?limit=100&offset=0
 ```
 
 **Response (200):**
+
 ```json
 {
   "transactions": [
@@ -188,6 +197,7 @@ Content-Type: application/json
 ```
 
 **Body:**
+
 ```json
 {
   "statementIds": ["uuid-1", "uuid-2"],
@@ -204,7 +214,21 @@ Content-Type: application/json
 
 All config fields are optional and fall back to the defaults shown above.
 
+**Config field reference:**
+
+| Field | Default | Description |
+|-------|---------|-------------|
+| `dateWindowDays` | 5 | Only compare transactions within ±N days of each other. A transfer from Account A on Jan 10 would only match against Account B transactions from Jan 5–15. Keeps comparisons relevant and reduces noise. |
+| `amountToleranceAbsolute` | 0.01 | Allows matching amounts that differ by up to this value (e.g., 50,000.00 vs 50,000.01). Handles rounding differences between banks. |
+| `amountToleranceRelative` | 0.005 | Allows matching amounts that differ by up to 0.5% (e.g., 50,000 vs 50,250). Handles fee-inclusive amounts or currency conversion differences. Either this OR the absolute tolerance passing is enough for a candidate pair. |
+| `batchSize` | 50 | How many candidate pairs to send to Claude in a single API call. Larger = fewer API calls but longer per-call processing. |
+| `enableTextFilter` | true | When enabled, candidate pairs must share at least one meaningful word in their descriptions (after removing stop words like "payment", "pos", "card"). Reduces irrelevant pairs sent to Claude. Set to `false` if descriptions across banks are very different. |
+| `minConfidence` | 0.7 | Claude assigns a confidence score (0–1) to each relationship. Only relationships scoring above this threshold are saved. Lower it to catch more matches (with more false positives), raise it for precision. |
+
+**How they work together:** `dateWindowDays` + `amountTolerance*` + `enableTextFilter` narrow down candidate pairs → candidates are sent to Claude in batches of `batchSize` → Claude classifies each pair → results below `minConfidence` are discarded.
+
 **Response (202):**
+
 ```json
 { "matchRunId": "uuid", "status": "pending" }
 ```
@@ -218,6 +242,7 @@ GET /v1/match-runs?limit=100&offset=0
 ```
 
 **Response (200):**
+
 ```json
 {
   "matchRuns": [
@@ -247,6 +272,7 @@ GET /v1/match-runs/:matchRunId
 ```
 
 **Response (200):**
+
 ```json
 {
   "matchRun": {
@@ -282,11 +308,13 @@ DELETE /v1/match-runs/:matchRunId
 Deletes the match run and all associated relationships.
 
 **Response (200):**
+
 ```json
 { "deleted": true }
 ```
 
 **Response (404):**
+
 ```json
 { "error": "Match run not found" }
 ```
@@ -343,75 +371,85 @@ run-match worker picks up job:
 
 ### `uploads`
 
-| Column | Type | Description |
-|--------|------|-------------|
-| `id` | UUID (PK) | Upload identifier |
-| `filename` | TEXT | Original filename |
-| `mime_type` | TEXT | File MIME type |
-| `source_type` | TEXT | `"pdf"` or `"csv"` |
-| `status` | TEXT | `pending → parsing → parsed` or `failed` |
-| `error` | TEXT | Error message if failed |
-| `file_hash` | TEXT | SHA-256 hash of file contents (for deduplication) |
-| `created_at` | TIMESTAMPTZ | |
-| `updated_at` | TIMESTAMPTZ | |
+
+| Column        | Type        | Description                                       |
+| ------------- | ----------- | ------------------------------------------------- |
+| `id`          | UUID (PK)   | Upload identifier                                 |
+| `filename`    | TEXT        | Original filename                                 |
+| `mime_type`   | TEXT        | File MIME type                                    |
+| `source_type` | TEXT        | `"pdf"` or `"csv"`                                |
+| `status`      | TEXT        | `pending → parsing → parsed` or `failed`          |
+| `error`       | TEXT        | Error message if failed                           |
+| `file_hash`   | TEXT        | SHA-256 hash of file contents (for deduplication) |
+| `created_at`  | TIMESTAMPTZ |                                                   |
+| `updated_at`  | TIMESTAMPTZ |                                                   |
+
 
 ### `statements`
 
-| Column | Type | Description |
-|--------|------|-------------|
-| `id` | UUID (PK) | Statement identifier |
-| `upload_id` | UUID (FK) | Parent upload |
-| `bank_name` | TEXT | Bank identifier |
-| `account_identifier_hash` | TEXT | Optional account hash |
-| `currency` | TEXT | Statement currency |
-| `date_range_start` | DATE | Earliest transaction date |
-| `date_range_end` | DATE | Latest transaction date |
-| `raw_metadata` | JSONB | Filename, row count, etc. |
+
+| Column                    | Type      | Description               |
+| ------------------------- | --------- | ------------------------- |
+| `id`                      | UUID (PK) | Statement identifier      |
+| `upload_id`               | UUID (FK) | Parent upload             |
+| `bank_name`               | TEXT      | Bank identifier           |
+| `account_identifier_hash` | TEXT      | Optional account hash     |
+| `currency`                | TEXT      | Statement currency        |
+| `date_range_start`        | DATE      | Earliest transaction date |
+| `date_range_end`          | DATE      | Latest transaction date   |
+| `raw_metadata`            | JSONB     | Filename, row count, etc. |
+
 
 ### `transactions`
 
-| Column | Type | Description |
-|--------|------|-------------|
-| `id` | UUID (PK) | Transaction identifier |
-| `statement_id` | UUID (FK) | Parent statement |
-| `posted_at` | TIMESTAMPTZ | Posting date |
-| `value_date` | DATE | Value/effective date |
-| `amount` | NUMERIC(18,4) | Signed amount |
-| `currency` | TEXT | Currency code |
-| `description_raw` | TEXT | Original description |
-| `description_norm` | TEXT | Lowercased, trimmed |
-| `balance_after` | NUMERIC(18,4) | Running balance |
-| `hash_signature` | TEXT | SHA256 dedup hash |
-| `extra` | JSONB | Bank-specific metadata |
+
+| Column             | Type          | Description            |
+| ------------------ | ------------- | ---------------------- |
+| `id`               | UUID (PK)     | Transaction identifier |
+| `statement_id`     | UUID (FK)     | Parent statement       |
+| `posted_at`        | TIMESTAMPTZ   | Posting date           |
+| `value_date`       | DATE          | Value/effective date   |
+| `amount`           | NUMERIC(18,4) | Signed amount          |
+| `currency`         | TEXT          | Currency code          |
+| `description_raw`  | TEXT          | Original description   |
+| `description_norm` | TEXT          | Lowercased, trimmed    |
+| `balance_after`    | NUMERIC(18,4) | Running balance        |
+| `hash_signature`   | TEXT          | SHA256 dedup hash      |
+| `extra`            | JSONB         | Bank-specific metadata |
+
 
 ### `match_runs`
 
-| Column | Type | Description |
-|--------|------|-------------|
-| `id` | UUID (PK) | Match run identifier |
-| `statement_ids` | UUID[] | Statements being matched |
-| `config` | JSONB | Matching parameters |
-| `status` | TEXT | `pending → running → completed` or `failed` |
-| `error` | TEXT | Error message if failed |
-| `claude_model` | TEXT | Model used for classification |
-| `prompt_version` | TEXT | Prompt version used |
+
+| Column           | Type      | Description                                 |
+| ---------------- | --------- | ------------------------------------------- |
+| `id`             | UUID (PK) | Match run identifier                        |
+| `statement_ids`  | UUID[]    | Statements being matched                    |
+| `config`         | JSONB     | Matching parameters                         |
+| `status`         | TEXT      | `pending → running → completed` or `failed` |
+| `error`          | TEXT      | Error message if failed                     |
+| `claude_model`   | TEXT      | Model used for classification               |
+| `prompt_version` | TEXT      | Prompt version used                         |
+
 
 ### `relationships`
 
-| Column | Type | Description |
-|--------|------|-------------|
-| `id` | UUID (PK) | Relationship identifier |
-| `match_run_id` | UUID (FK) | Parent match run |
-| `tx_a_id` | UUID (FK) | First transaction |
-| `tx_b_id` | UUID (FK) | Second transaction |
-| `relationship_type` | TEXT | `transfer`, `duplicate`, `refund`, `fee_link`, or `unrelated` |
-| `confidence` | NUMERIC(4,3) | 0.000 – 1.000 |
-| `reason` | TEXT | Claude's explanation |
-| `raw_claude_response` | JSONB | Full API response |
-| `label_type` | TEXT | Human-assigned label (optional) |
-| `label_source` | TEXT | Label source (optional) |
-| `labelled_by` | TEXT | Who labeled it (optional) |
-| `label_confidence` | NUMERIC(4,3) | Human label confidence (optional) |
+
+| Column                | Type         | Description                                                   |
+| --------------------- | ------------ | ------------------------------------------------------------- |
+| `id`                  | UUID (PK)    | Relationship identifier                                       |
+| `match_run_id`        | UUID (FK)    | Parent match run                                              |
+| `tx_a_id`             | UUID (FK)    | First transaction                                             |
+| `tx_b_id`             | UUID (FK)    | Second transaction                                            |
+| `relationship_type`   | TEXT         | `transfer`, `duplicate`, `refund`, `fee_link`, or `unrelated` |
+| `confidence`          | NUMERIC(4,3) | 0.000 – 1.000                                                 |
+| `reason`              | TEXT         | Claude's explanation                                          |
+| `raw_claude_response` | JSONB        | Full API response                                             |
+| `label_type`          | TEXT         | Human-assigned label (optional)                               |
+| `label_source`        | TEXT         | Label source (optional)                                       |
+| `labelled_by`         | TEXT         | Who labeled it (optional)                                     |
+| `label_confidence`    | NUMERIC(4,3) | Human label confidence (optional)                             |
+
 
 ---
 
@@ -421,11 +459,13 @@ run-match worker picks up job:
 
 Bank-specific parsing rules live in `src/ingestion/bankConfigs.ts`. Each config defines how to extract transactions from that bank's statement format.
 
-| Bank | Source | Parse Mode | Notes |
-|------|--------|------------|-------|
-| `generic-csv` | CSV | Column mapping | Standard CSV with date/amount/description columns |
-| `generic-pdf` | PDF | Line mode | Single regex per line |
-| `access-bank` | PDF | Block mode | Multi-line transactions, DD-MMM-YY dates, NGN currency |
+
+| Bank          | Source | Parse Mode     | Notes                                                  |
+| ------------- | ------ | -------------- | ------------------------------------------------------ |
+| `generic-csv` | CSV    | Column mapping | Standard CSV with date/amount/description columns      |
+| `generic-pdf` | PDF    | Line mode      | Single regex per line                                  |
+| `access-bank` | PDF    | Block mode     | Multi-line transactions, DD-MMM-YY dates, NGN currency |
+
 
 ### Parsing Strategy
 
@@ -435,6 +475,7 @@ Both CSV and PDF parsers follow a two-tier approach:
 2. **AI fallback** — If deterministic parsing fails or returns 0 rows, the raw text is sent to Claude Haiku in chunks for extraction.
 
 PDF-specific features:
+
 - **Block mode** assembles multi-line transactions before extracting fields.
 - **Balance reconciliation** compares parsed closing balance against the value stated in the PDF. A mismatch triggers the AI fallback.
 - **Chunking** splits large PDFs into 80-line chunks with 8-line overlap to avoid splitting mid-transaction.
@@ -457,12 +498,13 @@ Every raw transaction passes through `src/normalization/normalizeTransaction.ts`
 `src/matching/candidateGenerator.ts` produces candidate transaction pairs for Claude to classify.
 
 **Algorithm:**
+
 1. Group transactions by currency.
 2. Sort by `posted_at` ascending.
 3. For each pair `(i, j)` where `i < j`:
-   - **Date filter:** `|date_j - date_i|` ≤ `dateWindowDays`
-   - **Amount filter:** `|amount_a - amount_b|` ≤ `amountToleranceAbsolute` OR relative difference ≤ `amountToleranceRelative`
-   - **Text filter** (optional): At least one meaningful token shared between descriptions (after removing stop words like "payment", "pos", "card", etc.)
+  - **Date filter:** `|date_j - date_i|` ≤ `dateWindowDays`
+  - **Amount filter:** `|amount_a - amount_b|` ≤ `amountToleranceAbsolute` OR relative difference ≤ `amountToleranceRelative`
+  - **Text filter** (optional): At least one meaningful token shared between descriptions (after removing stop words like "payment", "pos", "card", etc.)
 4. Stop at `maxPairsPerRun` (default 10,000).
 
 Pair IDs are deterministic: `min(txA.id, txB.id):max(txA.id, txB.id)`.
@@ -473,15 +515,18 @@ Pair IDs are deterministic: `min(txA.id, txB.id):max(txA.id, txB.id)`.
 
 **Relationship types:**
 
-| Type | Description |
-|------|-------------|
-| `transfer` | Same money moved between accounts of the same user |
-| `duplicate` | Same transaction recorded twice |
-| `refund` | A payment that was later refunded |
-| `fee_link` | A fee clearly associated with another transaction |
-| `unrelated` | No meaningful relationship |
+
+| Type        | Description                                        |
+| ----------- | -------------------------------------------------- |
+| `transfer`  | Same money moved between accounts of the same user |
+| `duplicate` | Same transaction recorded twice                    |
+| `refund`    | A payment that was later refunded                  |
+| `fee_link`  | A fee clearly associated with another transaction  |
+| `unrelated` | No meaningful relationship                         |
+
 
 **Resilience:**
+
 - Exponential backoff on network errors (2s, 4s, 8s).
 - Honors `Retry-After` header on 429 rate limits.
 - Detects `stop_reason: "max_tokens"` truncation.
@@ -493,18 +538,20 @@ Results below `minConfidence` (default 0.7) are filtered out before persistence.
 
 ## Environment Variables
 
-| Variable | Required | Default | Description |
-|----------|----------|---------|-------------|
-| `DATABASE_URL` | Yes | — | PostgreSQL connection string |
-| `REDIS_URL` | Yes | — | Redis connection string |
-| `CLAUDE_API_KEY` | Yes | — | Anthropic API key |
-| `PORT` | No | `4000` | Server port |
-| `NODE_ENV` | No | `development` | Environment |
-| `CORS_ORIGINS` | No | `http://localhost:5173,http://localhost:5713` | Comma-separated allowlist for browser CORS origins |
-| `UPLOADS_DIR` | No | `data/uploads` | File storage directory |
-| `API_KEYS` | No | — | Comma-separated valid API keys. If unset, auth is disabled. |
-| `CLAUDE_MODEL` | No | `claude-sonnet-4-6` | Model for relationship matching |
-| `CLAUDE_PROMPT_VERSION` | No | `PROMPT_VERSION_1` | Prompt template version |
+
+| Variable                | Required | Default                                       | Description                                                 |
+| ----------------------- | -------- | --------------------------------------------- | ----------------------------------------------------------- |
+| `DATABASE_URL`          | Yes      | —                                             | PostgreSQL connection string                                |
+| `REDIS_URL`             | Yes      | —                                             | Redis connection string                                     |
+| `CLAUDE_API_KEY`        | Yes      | —                                             | Anthropic API key                                           |
+| `PORT`                  | No       | `4000`                                        | Server port                                                 |
+| `NODE_ENV`              | No       | `development`                                 | Environment                                                 |
+| `CORS_ORIGINS`          | No       | `http://localhost:5173,http://localhost:5713` | Comma-separated allowlist for browser CORS origins          |
+| `UPLOADS_DIR`           | No       | `data/uploads`                                | File storage directory                                      |
+| `API_KEYS`              | No       | —                                             | Comma-separated valid API keys. If unset, auth is disabled. |
+| `CLAUDE_MODEL`          | No       | `claude-sonnet-4-6`                           | Model for relationship matching                             |
+| `CLAUDE_PROMPT_VERSION` | No       | `PROMPT_VERSION_1`                            | Prompt template version                                     |
+
 
 Example:
 
@@ -552,6 +599,7 @@ docker compose up --build
 ```
 
 This starts:
+
 - **App** on `localhost:4000`
 - **PostgreSQL** (user: `sie_user`, password: `sie_password`, db: `statement_intel`)
 - **Redis** on `localhost:6379`
@@ -577,18 +625,21 @@ Returns `{ "status": "ok" }` — no authentication required. Used by Docker and 
 The project includes a `render.yaml` Blueprint for one-click deployment to [Render](https://render.com).
 
 **What Render provisions automatically:**
+
 - Web service (Docker-based, from the `Dockerfile`)
 - Managed PostgreSQL (`DATABASE_URL` auto-injected)
 - Persistent disk for file uploads
 
 **What you set manually in the Render dashboard (Environment tab):**
 
-| Variable | Where to get it |
-|----------|----------------|
-| `REDIS_URL` | Upstash (see below) |
-| `CLAUDE_API_KEY` | Anthropic dashboard |
-| `API_KEYS` | Your chosen API key(s) |
-| `CORS_ORIGINS` | Your frontend URL |
+
+| Variable         | Where to get it        |
+| ---------------- | ---------------------- |
+| `REDIS_URL`      | Upstash (see below)    |
+| `CLAUDE_API_KEY` | Anthropic dashboard    |
+| `API_KEYS`       | Your chosen API key(s) |
+| `CORS_ORIGINS`   | Your frontend URL      |
+
 
 **Deployment steps:**
 
@@ -611,13 +662,15 @@ The `rediss://` scheme enables TLS automatically — no code changes needed.
 
 ### Deployment Files
 
-| File | Purpose |
-|------|---------|
-| `Dockerfile` | Multi-stage build: compile TypeScript → slim production image (Alpine, non-root user) |
-| `.dockerignore` | Excludes node_modules, dist, .env, uploads from build context |
-| `docker-compose.yml` | Local dev: app + Postgres + Redis with health checks |
-| `docker-compose.prod.yml` | Production override: passwords required, DB/Redis ports locked down |
-| `render.yaml` | Render Blueprint: web service + managed Postgres + Upstash Redis instructions |
+
+| File                      | Purpose                                                                               |
+| ------------------------- | ------------------------------------------------------------------------------------- |
+| `Dockerfile`              | Multi-stage build: compile TypeScript → slim production image (Alpine, non-root user) |
+| `.dockerignore`           | Excludes node_modules, dist, .env, uploads from build context                         |
+| `docker-compose.yml`      | Local dev: app + Postgres + Redis with health checks                                  |
+| `docker-compose.prod.yml` | Production override: passwords required, DB/Redis ports locked down                   |
+| `render.yaml`             | Render Blueprint: web service + managed Postgres + Upstash Redis instructions         |
+
 
 ---
 
@@ -671,3 +724,4 @@ src/
     ├── logger.ts                   # Pino logger configuration
     └── metrics.ts                  # Metrics stubs (recordDuration, incrementCounter)
 ```
+
